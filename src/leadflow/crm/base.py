@@ -5,6 +5,14 @@ from typing import Protocol
 DEAL_STAGES = ("new", "qualified", "proposal", "won", "lost")
 
 
+class DuplicateContactError(Exception):
+    """Raised when create_contact(reject_duplicate_email=True) finds an exact email match."""
+
+    def __init__(self, existing_ids: list[int]):
+        self.existing_ids = existing_ids
+        super().__init__(f"contact with this email already exists: {existing_ids}")
+
+
 class CRMClient(Protocol):
     # --- reads (safe, no side effects) ---
     def get_contact(self, contact_id: int) -> dict | None: ...
@@ -16,7 +24,7 @@ class CRMClient(Protocol):
 
     # --- writes (always audited; idempotent when a key is given) ---
     def create_contact(self, fields: dict, idempotency_key: str | None = None,
-                       actor: str = "system") -> dict: ...
+                       actor: str = "system", reject_duplicate_email: bool = False) -> dict: ...
     def update_contact(self, contact_id: int, fields: dict, actor: str = "system") -> dict: ...
     def create_deal(self, contact_id: int, name: str, amount: float | None = None,
                     stage: str = "new", idempotency_key: str | None = None,

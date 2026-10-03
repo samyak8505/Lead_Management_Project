@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .base import DEAL_STAGES
+from .base import DEAL_STAGES, DuplicateContactError
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS companies (
@@ -162,7 +162,7 @@ class SQLiteCRM:
         return self._one("SELECT * FROM companies WHERE id=?", (cur.lastrowid,))
 
     def create_contact(self, fields: dict, idempotency_key: str | None = None,
-                       actor: str = "system") -> dict:
+                       actor: str = "system", reject_duplicate_email: bool = False) -> dict:
         f = _pick(fields, CONTACT_FIELDS)
         if not f.get("email") and not (f.get("first_name") and f.get("last_name")):
             raise ValueError("need an email, or both first and last name")
@@ -172,6 +172,10 @@ class SQLiteCRM:
                 c = self.get_contact(existing)
                 c["_replayed"] = True
                 return c
+            if reject_duplicate_email and f.get("email"):
+                dups = self.find_by_email(f["email"])
+                if dups:
+                    raise DuplicateContactError([d["id"] for d in dups])
             now = _now()
             f.setdefault("created_at", now)
             f["updated_at"] = now

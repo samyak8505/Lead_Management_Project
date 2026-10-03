@@ -50,3 +50,13 @@ def test_search_by_name_and_company(crm):
     crm.create_contact({"first_name": "Bob", "last_name": "Stone", "company_name": "ACME Inc"})
     assert len(crm.search_contacts(name="stone", company="acme")) == 1
     assert crm.search_contacts() == []
+
+
+def test_reject_duplicate_email_flag(crm):
+    from leadflow.crm import DuplicateContactError
+    crm.create_contact({"email": "dup@x.com"})
+    with pytest.raises(DuplicateContactError):
+        crm.create_contact({"email": " DUP@x.com "}, reject_duplicate_email=True)
+    # default behaviour unchanged (seed relies on this)
+    crm.create_contact({"email": "dup@x.com"})
+    assert crm.stats()["contacts"] == 2
