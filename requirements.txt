@@ -1,0 +1,8 @@
+google-genai>=1.0
+pydantic>=2.7
+python-dotenv>=1.0
+faker>=25.0
+rapidfuzz>=3.9
+pytest>=8.0
+# Added later:
+# langgraph, langfuse, streamlit, mcp
