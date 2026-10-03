@@ -1,0 +1,749 @@
+[
+  {
+    "canonical_id": 28,
+    "duplicates": [
+      {
+        "id": 331,
+        "kind": "no_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 156,
+    "duplicates": [
+      {
+        "id": 332,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 235,
+    "duplicates": [
+      {
+        "id": 333,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 84,
+    "duplicates": [
+      {
+        "id": 334,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 296,
+    "duplicates": [
+      {
+        "id": 335,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 71,
+    "duplicates": [
+      {
+        "id": 336,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 227,
+    "duplicates": [
+      {
+        "id": 337,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 248,
+    "duplicates": [
+      {
+        "id": 338,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 150,
+    "duplicates": [
+      {
+        "id": 339,
+        "kind": "typo_name"
+      },
+      {
+        "id": 340,
+        "kind": "no_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 75,
+    "duplicates": [
+      {
+        "id": 341,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 108,
+    "duplicates": [
+      {
+        "id": 342,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 112,
+    "duplicates": [
+      {
+        "id": 343,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 101,
+    "duplicates": [
+      {
+        "id": 344,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 5,
+    "duplicates": [
+      {
+        "id": 345,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 186,
+    "duplicates": [
+      {
+        "id": 346,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 295,
+    "duplicates": [
+      {
+        "id": 347,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 53,
+    "duplicates": [
+      {
+        "id": 348,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 76,
+    "duplicates": [
+      {
+        "id": 349,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 193,
+    "duplicates": [
+      {
+        "id": 350,
+        "kind": "typo_name"
+      },
+      {
+        "id": 351,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 219,
+    "duplicates": [
+      {
+        "id": 352,
+        "kind": "no_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 87,
+    "duplicates": [
+      {
+        "id": 353,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 29,
+    "duplicates": [
+      {
+        "id": 354,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 50,
+    "duplicates": [
+      {
+        "id": 355,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 183,
+    "duplicates": [
+      {
+        "id": 356,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 243,
+    "duplicates": [
+      {
+        "id": 357,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 92,
+    "duplicates": [
+      {
+        "id": 358,
+        "kind": "no_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 27,
+    "duplicates": [
+      {
+        "id": 359,
+        "kind": "no_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 61,
+    "duplicates": [
+      {
+        "id": 360,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 264,
+    "duplicates": [
+      {
+        "id": 361,
+        "kind": "no_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 174,
+    "duplicates": [
+      {
+        "id": 362,
+        "kind": "no_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 304,
+    "duplicates": [
+      {
+        "id": 363,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 223,
+    "duplicates": [
+      {
+        "id": 364,
+        "kind": "nickname"
+      },
+      {
+        "id": 365,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 77,
+    "duplicates": [
+      {
+        "id": 366,
+        "kind": "no_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 322,
+    "duplicates": [
+      {
+        "id": 367,
+        "kind": "no_email"
+      },
+      {
+        "id": 368,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 207,
+    "duplicates": [
+      {
+        "id": 369,
+        "kind": "typo_name"
+      },
+      {
+        "id": 370,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 126,
+    "duplicates": [
+      {
+        "id": 371,
+        "kind": "case_email"
+      },
+      {
+        "id": 372,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 18,
+    "duplicates": [
+      {
+        "id": 373,
+        "kind": "case_email"
+      },
+      {
+        "id": 374,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 124,
+    "duplicates": [
+      {
+        "id": 375,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 204,
+    "duplicates": [
+      {
+        "id": 376,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 251,
+    "duplicates": [
+      {
+        "id": 377,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 155,
+    "duplicates": [
+      {
+        "id": 378,
+        "kind": "old_email"
+      },
+      {
+        "id": 379,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 306,
+    "duplicates": [
+      {
+        "id": 380,
+        "kind": "old_email"
+      },
+      {
+        "id": 381,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 89,
+    "duplicates": [
+      {
+        "id": 382,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 46,
+    "duplicates": [
+      {
+        "id": 383,
+        "kind": "typo_name"
+      },
+      {
+        "id": 384,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 238,
+    "duplicates": [
+      {
+        "id": 385,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 196,
+    "duplicates": [
+      {
+        "id": 386,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 141,
+    "duplicates": [
+      {
+        "id": 387,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 324,
+    "duplicates": [
+      {
+        "id": 388,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 228,
+    "duplicates": [
+      {
+        "id": 389,
+        "kind": "old_email"
+      },
+      {
+        "id": 390,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 189,
+    "duplicates": [
+      {
+        "id": 391,
+        "kind": "case_email"
+      },
+      {
+        "id": 392,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 6,
+    "duplicates": [
+      {
+        "id": 393,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 62,
+    "duplicates": [
+      {
+        "id": 394,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 60,
+    "duplicates": [
+      {
+        "id": 395,
+        "kind": "typo_name"
+      },
+      {
+        "id": 396,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 43,
+    "duplicates": [
+      {
+        "id": 397,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 63,
+    "duplicates": [
+      {
+        "id": 398,
+        "kind": "nickname"
+      }
+    ]
+  },
+  {
+    "canonical_id": 329,
+    "duplicates": [
+      {
+        "id": 399,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 261,
+    "duplicates": [
+      {
+        "id": 400,
+        "kind": "no_email"
+      },
+      {
+        "id": 401,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 116,
+    "duplicates": [
+      {
+        "id": 402,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 12,
+    "duplicates": [
+      {
+        "id": 403,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 301,
+    "duplicates": [
+      {
+        "id": 404,
+        "kind": "no_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 294,
+    "duplicates": [
+      {
+        "id": 405,
+        "kind": "no_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 246,
+    "duplicates": [
+      {
+        "id": 406,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 49,
+    "duplicates": [
+      {
+        "id": 407,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 93,
+    "duplicates": [
+      {
+        "id": 408,
+        "kind": "typo_name"
+      },
+      {
+        "id": 409,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 197,
+    "duplicates": [
+      {
+        "id": 410,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 153,
+    "duplicates": [
+      {
+        "id": 411,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 293,
+    "duplicates": [
+      {
+        "id": 412,
+        "kind": "no_email"
+      },
+      {
+        "id": 413,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 65,
+    "duplicates": [
+      {
+        "id": 414,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 51,
+    "duplicates": [
+      {
+        "id": 415,
+        "kind": "case_email"
+      },
+      {
+        "id": 416,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 167,
+    "duplicates": [
+      {
+        "id": 417,
+        "kind": "typo_name"
+      }
+    ]
+  },
+  {
+    "canonical_id": 33,
+    "duplicates": [
+      {
+        "id": 418,
+        "kind": "old_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 276,
+    "duplicates": [
+      {
+        "id": 419,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 95,
+    "duplicates": [
+      {
+        "id": 420,
+        "kind": "case_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 208,
+    "duplicates": [
+      {
+        "id": 421,
+        "kind": "no_email"
+      }
+    ]
+  },
+  {
+    "canonical_id": 11,
+    "duplicates": [
+      {
+        "id": 422,
+        "kind": "case_email"
+      },
+      {
+        "id": 423,
+        "kind": "typo_name"
+      }
+    ]
+  }
+]
