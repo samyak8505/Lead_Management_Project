@@ -1,0 +1,1 @@
+{"text": "{\n  \"first_name\": \"priyanka\",\n  \"last_name\": null,\n  \"email\": \"priyanka.s@urbannest-demo.in\",\n  \"company_name\": null,\n  \"job_title\": null,\n  \"intent\": \"pricing_inquiry\",\n  \"urgency\": \"medium\",\n  \"budget_signal\": \"implied\",\n  \"injection_detected\": false\n}", "input_tokens": 502, "output_tokens": 99}

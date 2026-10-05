@@ -56,9 +56,12 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
     result_id INTEGER NOT NULL,
     created_at TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_contacts_email ON contacts(lower(trim(email)));
+CREATE INDEX IF NOT EXISTS idx_contacts_email ON contacts(lower(trim(email, ' ' || char(9) || char(10) || char(13))));
 CREATE INDEX IF NOT EXISTS idx_interactions_contact ON interactions(contact_id);
 """
+
+# SQLite's trim() only strips spaces by default; real-world emails carry tabs/newlines too.
+EMAIL_NORM_SQL = "lower(trim(email, ' ' || char(9) || char(10) || char(13)))"
 
 # Whitelists: field names from callers (and LLMs) are never interpolated blindly into SQL.
 CONTACT_FIELDS = {"first_name", "last_name", "email", "phone", "title",
@@ -120,7 +123,7 @@ class SQLiteCRM:
     def find_by_email(self, email: str) -> list[dict]:
         if not email:
             return []
-        return self._all("SELECT * FROM contacts WHERE lower(trim(email)) = ?",
+        return self._all(f"SELECT * FROM contacts WHERE {EMAIL_NORM_SQL} = ?",
                          (email.strip().lower(),))
 
     def search_contacts(self, name: str | None = None, company: str | None = None,

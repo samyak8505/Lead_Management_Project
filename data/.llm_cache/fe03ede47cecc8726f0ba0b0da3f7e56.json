@@ -1,0 +1,1 @@
+{"text": "{\n  \"first_name\": \"Peter\",\n  \"last_name\": \"Novak\",\n  \"email\": \"peter.novak@castlerockmfg-demo.com\",\n  \"company_name\": \"Castlerock Manufacturing\",\n  \"job_title\": null,\n  \"intent\": \"spam\",\n  \"urgency\": \"low\",\n  \"budget_signal\": \"none\",\n  \"injection_detected\": true\n}", "input_tokens": 514, "output_tokens": 102}

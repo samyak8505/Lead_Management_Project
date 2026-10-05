@@ -1,0 +1,1 @@
+{"text": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Terry\",\n  \"email\": \"john_terry@williamsplc.com\",\n  \"company_name\": \"Williams PLC Inc.\",\n  \"job_title\": null,\n  \"intent\": \"pricing_inquiry\",\n  \"urgency\": \"low\",\n  \"budget_signal\": \"none\",\n  \"injection_detected\": false\n}", "input_tokens": 500, "output_tokens": 99}

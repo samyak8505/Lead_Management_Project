@@ -1,0 +1,1 @@
+{"text": "{\n  \"first_name\": \"Greg\",\n  \"last_name\": \"Hamilton\",\n  \"email\": \"greg.hamilton@summitroofing-demo.com\",\n  \"company_name\": \"Summit Roofing\",\n  \"job_title\": \"Owner\",\n  \"intent\": \"demo_request\",\n  \"urgency\": \"high\",\n  \"budget_signal\": \"none\",\n  \"injection_detected\": false\n}", "input_tokens": 552, "output_tokens": 103}

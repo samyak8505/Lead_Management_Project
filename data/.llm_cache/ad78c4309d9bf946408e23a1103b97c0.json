@@ -1,0 +1,1 @@
+{"text": "{\n  \"first_name\": \"Dana\",\n  \"last_name\": \"Whitaker\",\n  \"email\": \"dana.whitaker@compliance-check-demo.net\",\n  \"company_name\": null,\n  \"job_title\": null,\n  \"intent\": \"spam\",\n  \"urgency\": \"low\",\n  \"budget_signal\": \"none\",\n  \"injection_detected\": true\n}", "input_tokens": 491, "output_tokens": 97}

@@ -1,0 +1,1 @@
+{"text": "{\n  \"first_name\": \"Liz\",\n  \"last_name\": \"Martinez\",\n  \"email\": \"liz.martinez@newton.com\",\n  \"company_name\": \"Newton Inc.\",\n  \"job_title\": \"Head of Procurement\",\n  \"intent\": \"demo_request\",\n  \"urgency\": \"high\",\n  \"budget_signal\": \"explicit\",\n  \"injection_detected\": false\n}", "input_tokens": 518, "output_tokens": 99}

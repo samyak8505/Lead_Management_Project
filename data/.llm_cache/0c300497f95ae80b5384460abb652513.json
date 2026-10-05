@@ -1,0 +1,1 @@
+{"text": "{\n  \"first_name\": \"Katherine\",\n  \"last_name\": \"Medina\",\n  \"email\": \"katherine_medina@brown.com\",\n  \"company_name\": \"Brown Inc.\",\n  \"job_title\": \"Managing Director\",\n  \"intent\": \"demo_request\",\n  \"urgency\": \"high\",\n  \"budget_signal\": \"explicit\",\n  \"injection_detected\": false\n}", "input_tokens": 514, "output_tokens": 99}

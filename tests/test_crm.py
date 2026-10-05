@@ -60,3 +60,8 @@ def test_reject_duplicate_email_flag(crm):
     # default behaviour unchanged (seed relies on this)
     crm.create_contact({"email": "dup@x.com"})
     assert crm.stats()["contacts"] == 2
+
+
+def test_find_by_email_handles_tabs_and_newlines(crm):
+    c = crm.create_contact({"email": "\tPad@Corp.com \t\n"})
+    assert crm.find_by_email("pad@corp.com")[0]["id"] == c["id"]

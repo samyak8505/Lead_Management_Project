@@ -1,0 +1,1 @@
+{"text": "{\n  \"first_name\": \"Ritu\",\n  \"last_name\": \"Sharma\",\n  \"email\": null,\n  \"company_name\": \"Sharma Dental Care\",\n  \"job_title\": null,\n  \"intent\": \"general_question\",\n  \"urgency\": \"low\",\n  \"budget_signal\": \"none\",\n  \"injection_detected\": false\n}", "input_tokens": 486, "output_tokens": 89}

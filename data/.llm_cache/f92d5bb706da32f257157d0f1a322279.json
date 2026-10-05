@@ -1,0 +1,1 @@
+{"text": "{\n  \"first_name\": \"James\",\n  \"last_name\": \"Okonkwo\",\n  \"email\": \"j.okonkwo@legalclaims-demo.net\",\n  \"company_name\": null,\n  \"job_title\": null,\n  \"intent\": \"spam\",\n  \"urgency\": \"low\",\n  \"budget_signal\": \"none\",\n  \"injection_detected\": false\n}", "input_tokens": 525, "output_tokens": 98}

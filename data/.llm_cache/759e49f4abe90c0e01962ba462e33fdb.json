@@ -1,0 +1,1 @@
+{"text": "{\n  \"first_name\": \"Daniel\",\n  \"last_name\": \"Okafor\",\n  \"email\": \"d.okafor@lagoongrid-demo.com\",\n  \"company_name\": \"Lagoon Grid Energy\",\n  \"job_title\": \"CTO\",\n  \"intent\": \"demo_request\",\n  \"urgency\": \"low\",\n  \"budget_signal\": \"implied\",\n  \"injection_detected\": false\n}", "input_tokens": 513, "output_tokens": 107}
