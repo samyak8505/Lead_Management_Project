@@ -101,6 +101,8 @@ def _build_context(
     extraction: dict,
     dedupe_res: DedupeResult | None,
     score_res: ScoreResult | None,
+    dossier: Any = None,
+    battlecard: Any = None,
 ) -> str:
     """Format known facts and untrusted input for generator and critic."""
     # Delimit untrusted lead text
@@ -117,13 +119,28 @@ def _build_context(
     if dedupe_res and dedupe_res.decision == "existing":
         existing_info = f"Existing CRM contact (ID: {dedupe_res.match_ids}). Active customer relationship."
 
+    intel_sections = []
+    if dossier:
+        headline = getattr(dossier, "headline", "")
+        scale = getattr(dossier, "estimated_scale", "")
+        tools = getattr(dossier, "technographics", {}).get("detected_tools", [])
+        intel_sections.append(f"<account_dossier>\nCompany Background: {headline}\nScale: {scale}\nTech Stack: {', '.join(tools)}\n</account_dossier>")
+
+    if battlecard:
+        diff = getattr(battlecard, "winning_differentiator", "")
+        qs = getattr(battlecard, "discovery_questions", [])
+        q_text = f"\nSuggested Discovery Question: {qs[0]}" if qs else ""
+        intel_sections.append(f"<sales_battlecard>\nKey Advantage: {diff}{q_text}\n</sales_battlecard>")
+
+    intel_str = ("\n\n" + "\n\n".join(intel_sections)) if intel_sections else ""
+
     context = f"""<crm_facts>
 Contact Name: {first_name} {last_name}
 Company: {company}
 Intent: {intent}
 Lead Tier: {tier} (Score: {score}/100)
 Relationship Status: {existing_info}
-</crm_facts>
+</crm_facts>{intel_str}
 
 <untrusted_inbound_lead>
 {safe_raw}
@@ -196,10 +213,12 @@ def draft_email(
     extraction: dict,
     dedupe_res: DedupeResult | None = None,
     score_res: ScoreResult | None = None,
+    dossier: Any = None,
+    battlecard: Any = None,
     llm_fn=None,
 ) -> DraftResult:
     """Run generator-critic loop (max 2 iterations) to produce a verified email draft."""
-    context = _build_context(raw, extraction, dedupe_res, score_res)
+    context = _build_context(raw, extraction, dedupe_res, score_res, dossier=dossier, battlecard=battlecard)
     total_usage = {"llm_calls": 0, "input_tokens": 0, "output_tokens": 0}
 
     feedback = ""
