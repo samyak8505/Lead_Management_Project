@@ -1,6 +1,6 @@
 """CRM-agnostic interface. The workflow only ever talks to this.
 Adapters: SQLiteCRM (Step 2), SalesforceCRM / HubSpotCRM (later)."""
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 DEAL_STAGES = ("new", "qualified", "proposal", "won", "lost")
 
@@ -13,6 +13,7 @@ class DuplicateContactError(Exception):
         super().__init__(f"contact with this email already exists: {existing_ids}")
 
 
+@runtime_checkable
 class CRMClient(Protocol):
     # --- reads (safe, no side effects) ---
     def get_contact(self, contact_id: int) -> dict | None: ...
