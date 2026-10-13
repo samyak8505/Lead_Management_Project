@@ -107,16 +107,17 @@ def detect_competitor(
                 base = COMPETITOR_INTELLIGENCE_BASE.get(comp_clean)
                 if base:
                     return base
+                comp_name = comp.strip()
                 return {
-                    "name": comp.title(),
+                    "name": comp_name,
                     "weakness": f"Generic legacy platform with high operational overhead compared to our focused solution.",
                     "winning_pitch": f"Purpose-built modern alternative delivering faster time-to-value and personalized support.",
                     "discovery_questions": [
-                        f"What specific limitations have you run into with {comp.title()}?",
-                        f"How long did it take your team to get fully onboarded with {comp.title()}?",
-                        f"What is the single biggest missing capability you wish {comp.title()} offered?",
+                        f"What specific limitations have you run into with {comp_name}?",
+                        f"How long did it take your team to get fully onboarded with {comp_name}?",
+                        f"What is the single biggest missing capability you wish {comp_name} offered?",
                     ],
-                    "objection_handling": f"While {comp.title()} is a known name, our customers choose us for higher responsiveness, lower TCO, and immediate deployment.",
+                    "objection_handling": f"While {comp_name} is a known name, our customers choose us for higher responsiveness, lower TCO, and immediate deployment.",
                 }
 
     # Check universal database

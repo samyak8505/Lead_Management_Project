@@ -40,7 +40,7 @@ def test_custom_tenant_competitor_override():
     txt = "We are currently evaluating Wiz and CrowdStrike for our cloud security."
     detected = detect_competitor(txt, custom_competitors=custom_list)
     assert detected is not None
-    assert detected["name"] in ("Wiz", "Crowdstrike")
+    assert detected["name"] in ("Wiz", "CrowdStrike")
 
 
 def test_battlecard_generation_when_competitor_present():

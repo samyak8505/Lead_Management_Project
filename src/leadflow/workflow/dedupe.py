@@ -17,7 +17,7 @@ import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 from rapidfuzz import fuzz
@@ -167,13 +167,13 @@ def match_company_name(c1: str | None, c2: str | None) -> bool:
     return fuzz.token_set_ratio(n1, n2) >= 88
 
 
-def _get_related_contact_ids(crm: SQLiteCRM, contact: dict) -> list[int]:
+def _get_related_contact_ids(crm: Any, contact: dict) -> list[int]:
     """Find the contact's ID and any linked duplicate records sharing company_id and last_name."""
     cid = contact.get("id")
     ids = {cid} if cid else set()
     co_id = contact.get("company_id")
     last_name = contact.get("last_name")
-    if co_id and last_name:
+    if co_id and last_name and hasattr(crm, "_all"):
         rows = crm._all(
             "SELECT id FROM contacts WHERE company_id = ? AND lower(trim(last_name)) = ?",
             (co_id, last_name.strip().lower())
@@ -184,7 +184,7 @@ def _get_related_contact_ids(crm: SQLiteCRM, contact: dict) -> list[int]:
 
 # ---------------- Deduplication Engine ----------------
 
-def dedupe(extraction: dict, crm: SQLiteCRM, llm_fn=None) -> DedupeResult:
+def dedupe(extraction: dict, crm: Any, llm_fn=None) -> DedupeResult:
     """Evaluate extracted lead fields against CRM to detect duplicates."""
     email = norm_email(extraction.get("email"))
     first_name = extraction.get("first_name")
@@ -208,12 +208,16 @@ def dedupe(extraction: dict, crm: SQLiteCRM, llm_fn=None) -> DedupeResult:
     lead_domain = email.split("@")[1] if email and "@" in email else None
 
     # Load CRM contacts with their company details for candidate matching
-    query = """
-        SELECT c.*, co.name AS co_name, co.domain AS co_domain
-        FROM contacts c
-        LEFT JOIN companies co ON co.id = c.company_id
-    """
-    contacts = crm._all(query)
+    if hasattr(crm, "_all"):
+        query = """
+            SELECT c.*, co.name AS co_name, co.domain AS co_domain
+            FROM contacts c
+            LEFT JOIN companies co ON co.id = c.company_id
+        """
+        contacts = crm._all(query)
+    else:
+        name_hint = f"{first_name or ''} {last_name or ''}".strip() or None
+        contacts = crm.search_contacts(name=name_hint, company=company_name, limit=50)
 
     candidates = []
     for c in contacts:

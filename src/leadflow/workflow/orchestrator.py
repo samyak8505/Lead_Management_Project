@@ -16,6 +16,7 @@ Features:
 """
 from __future__ import annotations
 import argparse
+import dataclasses
 import json
 import sqlite3
 import time
@@ -25,8 +26,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Literal, Optional
 
-from leadflow.crm import SQLiteCRM
+from leadflow.crm import CRMClient, SQLiteCRM, get_crm_for_tenant
+from leadflow.intelligence import (
+    AccountDossier,
+    build_account_dossier,
+    SalesBattlecard,
+    generate_sales_battlecard,
+    ingest_document,
+)
 from leadflow.observability.tracer import get_tracer
+from leadflow.tenancy.manager import TenantManager
 from leadflow.workflow.approval import ApprovalDecision, ApprovalGate, ApprovalRequest, interactive_cli_gate
 from leadflow.workflow.dedupe import DedupeResult, dedupe
 from leadflow.workflow.draft import DraftResult, draft_email
@@ -77,8 +86,12 @@ class WorkflowState:
     status: str = "running"              # running | waiting_for_approval | completed | discarded | routed_to_support | failed
     current_step: str = "intake"
     step_count: int = 0
+    tenant_id: Optional[str] = None
     extraction: Optional[dict] = None
     injection_detected: bool = False
+    dossier: Optional[dict] = None
+    battlecard: Optional[dict] = None
+    document_analysis: Optional[dict] = None
     dedupe: Optional[dict] = None
     scoring: Optional[dict] = None
     route: Optional[dict] = None
@@ -99,7 +112,9 @@ class WorkflowState:
 
     @classmethod
     def from_dict(cls, d: dict) -> WorkflowState:
-        return cls(**d)
+        valid_keys = {f.name for f in dataclasses.fields(cls)}
+        filtered = {k: v for k, v in d.items() if k in valid_keys}
+        return cls(**filtered)
 
     def record_usage(self, usage: dict) -> None:
         calls = usage.get("llm_calls", 0)
@@ -169,7 +184,11 @@ def load_checkpoint(run_id: str, db_path: str = DEFAULT_DB) -> WorkflowState | N
 def run_lead_pipeline(
     raw: str,
     channel: str = "email",
-    crm: Optional[SQLiteCRM] = None,
+    tenant_id: Optional[str] = None,
+    tenant_api_key: Optional[str] = None,
+    document_bytes: Optional[bytes] = None,
+    document_filename: Optional[str] = None,
+    crm: Optional[CRMClient | SQLiteCRM] = None,
     gate: Optional[ApprovalGate] = None,
     auto_approve: bool = False,
     interactive: bool = False,
@@ -179,7 +198,28 @@ def run_lead_pipeline(
     resume_from_state: Optional[WorkflowState] = None,
 ) -> WorkflowState:
     """Run lead pipeline end-to-end with persistent checkpoints after every step."""
-    crm = crm or SQLiteCRM(db_path)
+    tenant_mgr = TenantManager(db_path)
+    tenant = None
+    if tenant_api_key:
+        tenant = tenant_mgr.get_tenant_by_api_key(tenant_api_key)
+        if not tenant:
+            raise ValueError(f"Invalid tenant API key: '{tenant_api_key}'")
+        resolved_tenant_id = tenant.id
+    elif tenant_id:
+        tenant = tenant_mgr.get_tenant(tenant_id)
+        resolved_tenant_id = tenant_id
+    elif resume_from_state and resume_from_state.tenant_id:
+        tenant = tenant_mgr.get_tenant(resume_from_state.tenant_id)
+        resolved_tenant_id = resume_from_state.tenant_id
+    else:
+        resolved_tenant_id = None
+
+    tenant_settings = tenant_mgr.get_settings(tenant.id) if tenant else None
+    crm_config = tenant_mgr.get_crm_config(tenant.id) if tenant else None
+
+    if crm is None:
+        crm = get_crm_for_tenant(crm_config, db_path=db_path)
+
     gate = gate or ApprovalGate(db_path)
     tracer = get_tracer(db_path)
 
@@ -191,6 +231,7 @@ def run_lead_pipeline(
             run_id=run_id or f"run-{uuid.uuid4().hex[:8]}",
             channel=channel,
             raw_lead=raw,
+            tenant_id=resolved_tenant_id,
             current_step="intake",
         )
         save_checkpoint(state, db_path)
@@ -198,9 +239,28 @@ def run_lead_pipeline(
     tracer.start_trace(
         run_id=state.run_id,
         name="leadflow-pipeline",
-        tags={"channel": state.channel},
+        tags={"channel": state.channel, "tenant_id": state.tenant_id or "default"},
         metadata={"run_id": state.run_id, "step": state.current_step},
     )
+
+    # Ingest attached RFP / specification document if provided
+    if document_bytes and not state.document_analysis:
+        doc_res = ingest_document(document_bytes, filename=document_filename or "document.pdf")
+        state.document_analysis = doc_res.to_dict()
+        specs = []
+        if doc_res.requirements.seat_count:
+            specs.append(f"Seats: {doc_res.requirements.seat_count}")
+        if doc_res.requirements.budget_amount:
+            specs.append(f"Budget: ${doc_res.requirements.budget_amount:,.2f}")
+        if doc_res.requirements.compliance_needs:
+            specs.append(f"Compliance: {', '.join(doc_res.requirements.compliance_needs)}")
+        if doc_res.requirements.integration_needs:
+            specs.append(f"Integrations: {', '.join(doc_res.requirements.integration_needs)}")
+        if doc_res.requirements.deadline:
+            specs.append(f"Deadline: {doc_res.requirements.deadline}")
+        if specs:
+            state.raw_lead = f"{state.raw_lead}\n\n[Attached RFP Specs ({doc_res.filename})]:\n" + "\n".join(f"- {s}" for s in specs)
+        save_checkpoint(state, db_path)
 
     def step_guard(step_name: str):
         state.step_count += 1
@@ -221,6 +281,18 @@ def run_lead_pipeline(
                 sp.output_tokens = ext_res.usage.get("output_tokens", 0)
                 sp.metadata["intent"] = ext_res.data.get("intent")
                 save_checkpoint(state, db_path)
+
+        # Step 1.5: Autonomous Web Intelligence / 360° Account Dossier
+        if not state.dossier:
+            target_industries = tenant_settings.target_industries if tenant_settings else None
+            dossier = build_account_dossier(
+                email=state.extraction.get("email"),
+                domain=state.extraction.get("domain"),
+                company_hint=state.extraction.get("company_name"),
+                target_industries=target_industries,
+            )
+            state.dossier = dossier.to_dict()
+            save_checkpoint(state, db_path)
 
         # Step 2: Deduplication
         if not state.dedupe:
@@ -257,6 +329,20 @@ def run_lead_pipeline(
                 enrichment=state.scoring.get("enrichment", {}),
             )
 
+        # Step 3.5: Sales Battlecard Generation
+        if not state.battlecard:
+            dossier_obj = AccountDossier(**state.dossier) if state.dossier else None
+            custom_comps = tenant_settings.competitors if tenant_settings else None
+            pitch = tenant_settings.brand_pitch if tenant_settings else "Enterprise lead management platform."
+            bcard = generate_sales_battlecard(
+                lead_text=state.raw_lead,
+                dossier=dossier_obj,
+                custom_competitors=custom_comps,
+                brand_pitch=pitch,
+            )
+            state.battlecard = bcard.to_dict()
+            save_checkpoint(state, db_path)
+
         # Step 4: Routing
         if not state.route:
             step_guard("route")
@@ -287,11 +373,15 @@ def run_lead_pipeline(
         if not state.draft:
             step_guard("draft")
             with tracer.span("draft") as sp:
+                dossier_obj = AccountDossier(**state.dossier) if state.dossier else None
+                bcard_obj = SalesBattlecard(**state.battlecard) if state.battlecard else None
                 draft_res = draft_email(
                     state.raw_lead,
                     state.extraction,
                     dedupe_res=dedupe_res,
                     score_res=score_res,
+                    dossier=dossier_obj,
+                    battlecard=bcard_obj,
                 )
                 state.draft = draft_res.to_dict()
                 state.record_usage(draft_res.usage)
@@ -306,8 +396,29 @@ def run_lead_pipeline(
             step_guard("approval_gate")
             with tracer.span("approval_gate") as sp:
                 if not state.approval_request_id:
+                    lead_summary_payload = dict(state.extraction)
+                    if state.dossier:
+                        lead_summary_payload["dossier"] = {
+                            "company": state.dossier.get("company_name"),
+                            "scale": state.dossier.get("estimated_scale"),
+                            "icp_fit": state.dossier.get("icp_fit_score"),
+                            "tech": state.dossier.get("technographics", {}).get("detected_tools", []),
+                        }
+                    if state.battlecard:
+                        lead_summary_payload["battlecard"] = {
+                            "type": state.battlecard.get("battlecard_type"),
+                            "competitor": state.battlecard.get("competitor_detected"),
+                            "angle": state.battlecard.get("winning_differentiator"),
+                        }
+                    if state.document_analysis:
+                        lead_summary_payload["document"] = {
+                            "filename": state.document_analysis.get("filename"),
+                            "deal_value": state.document_analysis.get("estimated_deal_value"),
+                            "requirements": state.document_analysis.get("requirements", {}),
+                        }
+
                     req = gate.create_request(
-                        lead_summary=state.extraction,
+                        lead_summary=lead_summary_payload,
                         dedupe_info=state.dedupe,
                         score_info=state.scoring,
                         draft_email=state.draft,
@@ -321,8 +432,12 @@ def run_lead_pipeline(
                     assert req is not None
 
                 # Check if approval decision is provided or requested
-                if auto_approve:
-                    decision = gate.approve(req.id, reviewer=reviewer, notes="Auto-approved by orchestrator")
+                should_auto_approve = auto_approve or bool(
+                    tenant_settings and tenant_settings.auto_approve_hot and score_res.tier == "hot"
+                )
+
+                if should_auto_approve:
+                    decision = gate.approve(req.id, reviewer=reviewer, notes="Auto-approved by orchestrator policy")
                     state.approval_decision = decision.to_dict()
                     sp.metadata["decision"] = "approved"
                     save_checkpoint(state, db_path)
@@ -382,7 +497,8 @@ def run_lead_pipeline(
 def resume_pipeline(
     run_id: str,
     db_path: str = DEFAULT_DB,
-    crm: Optional[SQLiteCRM] = None,
+    tenant_id: Optional[str] = None,
+    crm: Optional[CRMClient | SQLiteCRM] = None,
     gate: Optional[ApprovalGate] = None,
 ) -> WorkflowState:
     """Resume a paused or checkpointed workflow run."""
@@ -409,6 +525,7 @@ def resume_pipeline(
     return run_lead_pipeline(
         raw=state.raw_lead,
         channel=state.channel,
+        tenant_id=tenant_id or state.tenant_id,
         crm=crm,
         gate=gate,
         db_path=db_path,

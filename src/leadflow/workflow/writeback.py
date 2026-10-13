@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-from leadflow.crm import SQLiteCRM
+from leadflow.crm import CRMClient, SQLiteCRM
 from leadflow.workflow.approval import ApprovalDecision, ApprovalRequest
 
 
@@ -58,7 +58,7 @@ def sandbox_email_sender(to_email: str, subject: str, body: str) -> str:
 def execute_write_back(
     request: ApprovalRequest,
     decision: ApprovalDecision,
-    crm: SQLiteCRM,
+    crm: CRMClient | SQLiteCRM,
     idempotency_key: Optional[str] = None,
     send_email_fn: Optional[Callable[[str, str, str], str]] = sandbox_email_sender,
 ) -> WriteBackResult:
@@ -73,24 +73,25 @@ def execute_write_back(
     key = idempotency_key or f"wb-{request.id}"
 
     # 2. Check for Previous Replay (Idempotency Key Check)
-    with crm.conn:
-        row = crm.conn.execute(
-            "SELECT result_id, entity FROM idempotency_keys WHERE key = ?", (key,)
-        ).fetchone()
-        if row:
-            cid = row["result_id"]
-            deal = crm._one("SELECT id FROM deals WHERE contact_id = ? ORDER BY id DESC LIMIT 1", (cid,))
-            interaction = crm._one("SELECT id FROM interactions WHERE contact_id = ? ORDER BY id DESC LIMIT 1", (cid,))
-            return WriteBackResult(
-                success=True,
-                contact_id=cid,
-                deal_id=deal["id"] if deal else None,
-                interaction_id=interaction["id"] if interaction else None,
-                email_sent=True,
-                email_id=f"replayed-{key}",
-                replayed=True,
-                audit_entries=["write_back_replayed"],
-            )
+    if hasattr(crm, "conn"):
+        with crm.conn:
+            row = crm.conn.execute(
+                "SELECT result_id, entity FROM idempotency_keys WHERE key = ?", (key,)
+            ).fetchone()
+            if row:
+                cid = row["result_id"]
+                deal = crm._one("SELECT id FROM deals WHERE contact_id = ? ORDER BY id DESC LIMIT 1", (cid,))
+                interaction = crm._one("SELECT id FROM interactions WHERE contact_id = ? ORDER BY id DESC LIMIT 1", (cid,))
+                return WriteBackResult(
+                    success=True,
+                    contact_id=cid,
+                    deal_id=deal["id"] if deal else None,
+                    interaction_id=interaction["id"] if interaction else None,
+                    email_sent=True,
+                    email_id=f"replayed-{key}",
+                    replayed=True,
+                    audit_entries=["write_back_replayed"],
+                )
 
     lead = request.lead_summary
     dedupe_info = request.dedupe_info
@@ -104,140 +105,189 @@ def execute_write_back(
     email_id: str | None = None
     audit_entries: list[str] = []
 
-    # 3. Single Atomic Transaction Block
+    # 3. Single Atomic Transaction Block or CRMClient Execution
     try:
-        with crm.conn:
+        if hasattr(crm, "conn"):
+            with crm.conn:
+                now = _now()
+                is_existing = dedupe_info.get("decision") == "existing" and dedupe_info.get("match_ids")
+
+                # A) Contact Creation or Update
+                if is_existing:
+                    contact_id = dedupe_info["match_ids"][0]
+                    updates = []
+                    params = []
+                    if lead.get("job_title"):
+                        updates.append("title = ?")
+                        params.append(lead["job_title"])
+                    if lead.get("company_name"):
+                        updates.append("company_name = ?")
+                        params.append(lead["company_name"])
+                    if updates:
+                        updates.append("updated_at = ?")
+                        params.append(now)
+                        params.append(contact_id)
+                        crm.conn.execute(f"UPDATE contacts SET {', '.join(updates)} WHERE id = ?", tuple(params))
+                        audit_entries.append(f"updated_contact_{contact_id}")
+                else:
+                    cur_c = crm.conn.execute(
+                        """INSERT INTO contacts (
+                            first_name, last_name, email, company_name, title, source, created_at, updated_at
+                        ) VALUES (?,?,?,?,?,?,?,?)""",
+                        (
+                            lead.get("first_name"),
+                            lead.get("last_name"),
+                            lead.get("email"),
+                            lead.get("company_name"),
+                            lead.get("job_title"),
+                            "leadflow_inbound",
+                            now,
+                            now,
+                        ),
+                    )
+                    contact_id = cur_c.lastrowid
+                    audit_entries.append(f"created_contact_{contact_id}")
+
+                # B) Deal Creation for High-Intent Prospects (hot or warm)
+                if tier in ("hot", "warm"):
+                    amount = 25000.0 if tier == "hot" else 10000.0
+                    intent_name = str(lead.get("intent", "Inquiry")).replace("_", " ").title()
+                    company_label = lead.get("company_name") or "New Prospect"
+                    deal_name = f"{company_label} - {intent_name}"
+
+                    cur_d = crm.conn.execute(
+                        """INSERT INTO deals (
+                            contact_id, name, amount, stage, created_at, updated_at
+                        ) VALUES (?,?,?,?,?,?)""",
+                        (contact_id, deal_name, amount, "new", now, now),
+                    )
+                    deal_id = cur_d.lastrowid
+                    audit_entries.append(f"created_deal_{deal_id}")
+
+                # C) Interaction Logging
+                interaction_summary = f"Outbound Email ({decision.status.title()} by {actor}): {subject}"
+                cur_i = crm.conn.execute(
+                    """INSERT INTO interactions (
+                        contact_id, kind, summary, created_at
+                    ) VALUES (?,?,?,?)""",
+                    (contact_id, "email", interaction_summary, now),
+                )
+                interaction_id = cur_i.lastrowid
+                audit_entries.append(f"logged_interaction_{interaction_id}")
+
+                # D) Email Dispatch (Sandbox or Live Provider)
+                to_addr = lead.get("email") or "sandbox@leadflow.local"
+                if send_email_fn:
+                    email_id = send_email_fn(to_addr, subject, body)
+                    audit_entries.append(f"dispatched_email_{email_id}")
+
+                # E) Store Idempotency Keys (for writeback and individual entities)
+                crm.conn.execute(
+                    "INSERT INTO idempotency_keys (key, entity, result_id, created_at) VALUES (?,?,?,?)",
+                    (key, "writeback", contact_id, now),
+                )
+                crm.conn.execute(
+                    "INSERT INTO idempotency_keys (key, entity, result_id, created_at) VALUES (?,?,?,?)",
+                    (f"c-{key}", "contact", contact_id, now),
+                )
+                if deal_id:
+                    crm.conn.execute(
+                        "INSERT INTO idempotency_keys (key, entity, result_id, created_at) VALUES (?,?,?,?)",
+                        (f"d-{key}", "deal", deal_id, now),
+                    )
+                crm.conn.execute(
+                    "INSERT INTO idempotency_keys (key, entity, result_id, created_at) VALUES (?,?,?,?)",
+                    (f"i-{key}", "interaction", interaction_id, now),
+                )
+
+                # F) Comprehensive Audit Log Entry
+                crm.conn.execute(
+                    "INSERT INTO audit_log (ts, actor, action, entity, entity_id, detail) VALUES (?,?,?,?,?,?)",
+                    (
+                        now,
+                        actor,
+                        "execute_write_back",
+                        "contact",
+                        contact_id,
+                        json.dumps({
+                            "request_id": request.id,
+                            "deal_id": deal_id,
+                            "interaction_id": interaction_id,
+                            "email_id": email_id,
+                            "tier": tier,
+                            "idempotency_key": key,
+                        }),
+                    ),
+                )
+                audit_entries.append("recorded_audit_log")
+
+        else:
+            # Generic CRMClient path (Salesforce, HubSpot, etc.)
             now = _now()
             is_existing = dedupe_info.get("decision") == "existing" and dedupe_info.get("match_ids")
 
-            # A) Contact Creation or Update
             if is_existing:
                 contact_id = dedupe_info["match_ids"][0]
-                updates = []
-                params = []
+                up_fields = {}
                 if lead.get("job_title"):
-                    updates.append("title = ?")
-                    params.append(lead["job_title"])
+                    up_fields["title"] = lead["job_title"]
                 if lead.get("company_name"):
-                    updates.append("company_name = ?")
-                    params.append(lead["company_name"])
-                if updates:
-                    updates.append("updated_at = ?")
-                    params.append(now)
-                    params.append(contact_id)
-                    crm.conn.execute(f"UPDATE contacts SET {', '.join(updates)} WHERE id = ?", tuple(params))
-                    audit_entries.append(f"updated_contact_{contact_id}")
+                    up_fields["company_name"] = lead["company_name"]
+                if up_fields:
+                    crm.update_contact(contact_id, up_fields, actor=actor)
+                audit_entries.append(f"updated_contact_{contact_id}")
             else:
-                cur_c = crm.conn.execute(
-                    """INSERT INTO contacts (
-                        first_name, last_name, email, company_name, title, source, created_at, updated_at
-                    ) VALUES (?,?,?,?,?,?,?,?)""",
-                    (
-                        lead.get("first_name"),
-                        lead.get("last_name"),
-                        lead.get("email"),
-                        lead.get("company_name"),
-                        lead.get("job_title"),
-                        "leadflow_inbound",
-                        now,
-                        now,
-                    ),
-                )
-                contact_id = cur_c.lastrowid
+                c_payload = {
+                    "first_name": lead.get("first_name"),
+                    "last_name": lead.get("last_name"),
+                    "email": lead.get("email"),
+                    "company_name": lead.get("company_name"),
+                    "title": lead.get("job_title"),
+                    "source": "leadflow_inbound",
+                }
+                c_res = crm.create_contact(c_payload, idempotency_key=f"c-{key}", actor=actor)
+                contact_id = c_res.get("id")
                 audit_entries.append(f"created_contact_{contact_id}")
 
-            # B) Deal Creation for High-Intent Prospects (hot or warm)
             if tier in ("hot", "warm"):
                 amount = 25000.0 if tier == "hot" else 10000.0
                 intent_name = str(lead.get("intent", "Inquiry")).replace("_", " ").title()
                 company_label = lead.get("company_name") or "New Prospect"
                 deal_name = f"{company_label} - {intent_name}"
 
-                cur_d = crm.conn.execute(
-                    """INSERT INTO deals (
-                        contact_id, name, amount, stage, created_at, updated_at
-                    ) VALUES (?,?,?,?,?,?)""",
-                    (contact_id, deal_name, amount, "new", now, now),
-                )
-                deal_id = cur_d.lastrowid
+                d_res = crm.create_deal(contact_id, deal_name, amount=amount, stage="new", idempotency_key=f"d-{key}", actor=actor)
+                deal_id = d_res.get("id")
                 audit_entries.append(f"created_deal_{deal_id}")
 
-            # C) Interaction Logging
             interaction_summary = f"Outbound Email ({decision.status.title()} by {actor}): {subject}"
-            cur_i = crm.conn.execute(
-                """INSERT INTO interactions (
-                    contact_id, kind, summary, created_at
-                ) VALUES (?,?,?,?)""",
-                (contact_id, "email", interaction_summary, now),
-            )
-            interaction_id = cur_i.lastrowid
+            i_res = crm.log_interaction(contact_id, "email", interaction_summary, idempotency_key=f"i-{key}", actor=actor)
+            interaction_id = i_res.get("id")
             audit_entries.append(f"logged_interaction_{interaction_id}")
 
-            # D) Email Dispatch (Sandbox or Live Provider)
-            # If sending throws an exception, the entire transaction rolls back!
             to_addr = lead.get("email") or "sandbox@leadflow.local"
             if send_email_fn:
                 email_id = send_email_fn(to_addr, subject, body)
                 audit_entries.append(f"dispatched_email_{email_id}")
 
-            # E) Store Idempotency Keys (for writeback and individual entities)
-            crm.conn.execute(
-                "INSERT INTO idempotency_keys (key, entity, result_id, created_at) VALUES (?,?,?,?)",
-                (key, "writeback", contact_id, now),
-            )
-            crm.conn.execute(
-                "INSERT INTO idempotency_keys (key, entity, result_id, created_at) VALUES (?,?,?,?)",
-                (f"c-{key}", "contact", contact_id, now),
-            )
-            if deal_id:
-                crm.conn.execute(
-                    "INSERT INTO idempotency_keys (key, entity, result_id, created_at) VALUES (?,?,?,?)",
-                    (f"d-{key}", "deal", deal_id, now),
-                )
-            crm.conn.execute(
-                "INSERT INTO idempotency_keys (key, entity, result_id, created_at) VALUES (?,?,?,?)",
-                (f"i-{key}", "interaction", interaction_id, now),
-            )
-
-            # F) Comprehensive Audit Log Entry
-            crm.conn.execute(
-                "INSERT INTO audit_log (ts, actor, action, entity, entity_id, detail) VALUES (?,?,?,?,?,?)",
-                (
-                    now,
-                    actor,
-                    "execute_write_back",
-                    "contact",
-                    contact_id,
-                    json.dumps({
-                        "request_id": request.id,
-                        "deal_id": deal_id,
-                        "interaction_id": interaction_id,
-                        "email_id": email_id,
-                        "tier": tier,
-                        "idempotency_key": key,
-                    }),
-                ),
-            )
-            audit_entries.append("recorded_audit_log")
+            audit_entries.append("recorded_crm_audit")
 
     except Exception as e:
-        # Upon exception, SQLite automatically rolls back the entire transaction!
-        # In a separate transaction, log the failure to audit_log
-        try:
-            with crm.conn:
-                crm.conn.execute(
-                    "INSERT INTO audit_log (ts, actor, action, entity, entity_id, detail) VALUES (?,?,?,?,?,?)",
-                    (
-                        _now(),
-                        actor,
-                        "write_back_failed",
-                        "approval_request",
-                        None,
-                        json.dumps({"request_id": request.id, "error": str(e)}),
-                    ),
-                )
-        except Exception:
-            pass
+        if hasattr(crm, "conn"):
+            try:
+                with crm.conn:
+                    crm.conn.execute(
+                        "INSERT INTO audit_log (ts, actor, action, entity, entity_id, detail) VALUES (?,?,?,?,?,?)",
+                        (
+                            _now(),
+                            actor,
+                            "write_back_failed",
+                            "approval_request",
+                            None,
+                            json.dumps({"request_id": request.id, "error": str(e)}),
+                        ),
+                    )
+            except Exception:
+                pass
 
         return WriteBackResult(
             success=False,

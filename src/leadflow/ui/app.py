@@ -7,6 +7,7 @@ Usage:
 from __future__ import annotations
 import argparse
 import http.server
+import base64
 import json
 import socketserver
 import sys
@@ -14,8 +15,9 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import parse_qs, urlparse
 
-from leadflow.crm.sqlite_adapter import SQLiteCRM
+from leadflow.crm import SQLiteCRM, get_crm_for_tenant
 from leadflow.observability.report import generate_metrics_report
+from leadflow.tenancy.manager import TenantManager
 from leadflow.workflow.approval import ApprovalDecision, ApprovalGate
 from leadflow.workflow.orchestrator import run_lead_pipeline, resume_pipeline, WorkflowState
 from leadflow.workflow.writeback import execute_write_back
@@ -1130,6 +1132,34 @@ class LeadFlowHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json(rep)
             return
 
+        elif parsed.path == "/api/tenants":
+            mgr = TenantManager(self.crm_path)
+            tenants = mgr.list_tenants()
+            self._send_json([t.to_dict() for t in tenants])
+            return
+
+        elif parsed.path == "/api/tenants/settings":
+            qs = parse_qs(parsed.query)
+            tid = qs.get("tenant_id", [None])[0]
+            mgr = TenantManager(self.crm_path)
+            if not tid:
+                first = mgr.list_tenants()
+                tid = first[0].id if first else "default"
+            settings = mgr.get_settings(tid)
+            self._send_json(settings.to_dict())
+            return
+
+        elif parsed.path == "/api/tenants/crm":
+            qs = parse_qs(parsed.query)
+            tid = qs.get("tenant_id", [None])[0]
+            mgr = TenantManager(self.crm_path)
+            if not tid:
+                first = mgr.list_tenants()
+                tid = first[0].id if first else "default"
+            crm_cfg = mgr.get_crm_config(tid)
+            self._send_json(crm_cfg.to_dict())
+            return
+
         else:
             self.send_error(404, "Endpoint not found")
 
@@ -1139,24 +1169,143 @@ class LeadFlowHandler(http.server.SimpleHTTPRequestHandler):
         body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
         data = json.loads(body)
 
-        if parsed.path == "/api/process":
-            raw_lead = data.get("raw_lead", "")
-            channel = data.get("channel", "email")
+        if parsed.path == "/api/v1/ingest":
+            qs = parse_qs(parsed.query)
+            api_key = (
+                self.headers.get("X-API-Key")
+                or qs.get("tenant_key", [None])[0]
+                or data.get("api_key")
+                or data.get("tenant_key")
+            )
+            if not api_key:
+                self._send_json(
+                    {"error": "Unauthorized: Missing tenant API key. Pass X-API-Key header or ?tenant_key= parameter."},
+                    status=401,
+                )
+                return
+
+            mgr = TenantManager(self.crm_path)
+            tenant = mgr.get_tenant_by_api_key(api_key)
+            if not tenant:
+                self._send_json(
+                    {"error": "Unauthorized: Invalid tenant API key."},
+                    status=401,
+                )
+                return
+
+            raw_lead = (
+                data.get("lead_text")
+                or data.get("raw_lead")
+                or data.get("text")
+                or data.get("notes")
+                or ""
+            )
+            channel = data.get("channel", "webhook")
             auto_approve = bool(data.get("auto_approve", False))
 
-            crm = SQLiteCRM(self.crm_path)
+            doc_bytes = None
+            doc_filename = data.get("document_filename")
+            if data.get("document_base64"):
+                try:
+                    doc_bytes = base64.b64decode(data["document_base64"])
+                except Exception:
+                    pass
+            elif data.get("document_text"):
+                doc_bytes = data["document_text"].encode("utf-8")
+                if not doc_filename:
+                    doc_filename = "inbound_rfp.txt"
+
             gate = ApprovalGate(self.crm_path)
+            crm_cfg = mgr.get_crm_config(tenant.id)
+            crm = get_crm_for_tenant(crm_cfg, db_path=self.crm_path)
+
             state = run_lead_pipeline(
                 raw=raw_lead,
                 channel=channel,
+                tenant_id=tenant.id,
+                document_bytes=doc_bytes,
+                document_filename=doc_filename,
                 crm=crm,
                 gate=gate,
                 auto_approve=auto_approve,
                 interactive=False,
                 db_path=self.crm_path,
             )
-            crm.close()
+            if hasattr(crm, "close"):
+                crm.close()
+
+            self._send_json({
+                "success": True,
+                "run_id": state.run_id,
+                "tenant": {
+                    "id": tenant.id,
+                    "name": tenant.name,
+                    "slug": tenant.slug,
+                },
+                "status": state.status,
+                "extraction": state.extraction,
+                "scoring": state.scoring,
+                "route": state.route,
+                "dossier": state.dossier,
+                "battlecard": state.battlecard,
+                "document_analysis": state.document_analysis,
+                "draft": state.draft,
+                "write_back": state.write_back,
+            })
+            return
+
+        elif parsed.path == "/api/process":
+            raw_lead = data.get("raw_lead", "")
+            channel = data.get("channel", "email")
+            auto_approve = bool(data.get("auto_approve", False))
+            tenant_id = data.get("tenant_id")
+
+            mgr = TenantManager(self.crm_path)
+            crm_cfg = mgr.get_crm_config(tenant_id) if tenant_id else None
+            crm = get_crm_for_tenant(crm_cfg, db_path=self.crm_path)
+            gate = ApprovalGate(self.crm_path)
+
+            state = run_lead_pipeline(
+                raw=raw_lead,
+                channel=channel,
+                tenant_id=tenant_id,
+                crm=crm,
+                gate=gate,
+                auto_approve=auto_approve,
+                interactive=False,
+                db_path=self.crm_path,
+            )
+            if hasattr(crm, "close"):
+                crm.close()
             self._send_json(state.to_dict())
+            return
+
+        elif parsed.path == "/api/tenants":
+            mgr = TenantManager(self.crm_path)
+            t = mgr.create_tenant(
+                name=data.get("name", "New Tenant"),
+                website=data.get("website", "https://example.com"),
+                industry=data.get("industry", "B2B SaaS"),
+                initial_settings=data.get("settings"),
+                initial_crm=data.get("crm"),
+            )
+            self._send_json(t.to_dict())
+            return
+
+        elif parsed.path == "/api/tenants/settings":
+            tid = data.get("tenant_id")
+            mgr = TenantManager(self.crm_path)
+            clean_data = {k: v for k, v in data.items() if k != "tenant_id"}
+            updated = mgr.update_settings(tid, **clean_data)
+            self._send_json(updated.to_dict())
+            return
+
+        elif parsed.path == "/api/tenants/crm":
+            tid = data.get("tenant_id")
+            mgr = TenantManager(self.crm_path)
+            clean_data = {k: v for k, v in data.items() if k != "tenant_id"}
+            updated = mgr.update_crm_config(tid, **clean_data)
+            self._send_json(updated.to_dict())
             return
 
         elif parsed.path == "/api/approvals/decide":
@@ -1200,16 +1349,15 @@ class LeadFlowHandler(http.server.SimpleHTTPRequestHandler):
         else:
             self.send_error(404, "Endpoint not found")
 
-    def _send_json(self, payload: Any) -> None:
+    def _send_json(self, payload: Any, status: int = 200) -> None:
         body = json.dumps(payload, default=str).encode("utf-8")
-        self.send_response(200)
+        self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
     def log_message(self, format: str, *args: Any) -> None:
-        # Suppress noisy standard request logging in test stdout
         return
 
 

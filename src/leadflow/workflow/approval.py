@@ -44,6 +44,16 @@ CREATE TABLE IF NOT EXISTS approval_requests (
     edited_body TEXT,
     edited_tier TEXT
 );
+
+CREATE TABLE IF NOT EXISTS audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    action TEXT NOT NULL,
+    entity TEXT NOT NULL,
+    entity_id INTEGER,
+    detail TEXT
+);
 """
 
 
