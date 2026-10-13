@@ -1,52 +1,67 @@
-# LeadFlow Architecture (Step 1)
+# LeadFlow Enterprise SaaS Architecture
 
-## User story
-As a sales rep, I want new leads cleaned, deduplicated, scored and drafted, so I only review and approve.
+## 1. System Vision
+LeadFlow is an autonomous RevOps intelligence platform designed for B2B enterprises. It transforms unstructured inbound pipeline inquiries, vendor evaluations, and RFP documents into qualified, scored, and competitive sales opportunities while synchronizing bidirectionally with enterprise CRM stacks (Salesforce REST, HubSpot API v3, and SQLite).
 
-## Inputs / outputs
-- **Input:** raw inbound lead (form JSON or pasted email text)
-- **Output:** created/updated CRM record, logged interaction, approved follow-up email, full audit trail
+---
 
-## Out of scope (v1)
-Real email sending to live addresses, multi-language leads, inbound phone/chat, billing.
+## 2. Inputs & Outputs
+- **Inputs**:
+  - Raw inbound text (inbound email, web-to-lead form, webhook payload).
+  - Omnichannel procurement documents (PDF base64, RFP questionnaires, Markdown specs).
+  - Authenticated tenant key (`lf_live_...` or Bearer token).
+- **Outputs**:
+  - 360° Account Dossier (crawled metadata, technology fingerprint, estimated scale).
+  - Dynamic Sales Battlecard (competitor displacement playbook, objection tracks, 3-touch cadence).
+  - Atomic Cloud CRM records (Contact, Deal/Opportunity, Interaction Task).
+  - Immutable audit trail logging human decisions and pipeline transitions.
 
-## Workflow
+---
+
+## 3. End-to-End Enterprise Flow
 
 ```mermaid
 flowchart TD
-    A[Intake: raw lead] --> B[Extract: structured output]
-    B -->|invalid after 1 retry| H1[Human review]
-    B --> C[Dedupe / match CRM]
-    C -->|needs_review| H1
-    C --> D[Enrich + Score - parallel]
-    D --> E{Route}
-    E -->|discard/spam| X[Log and stop]
-    E -->|support| S[Forward to support]
-    E -->|sales / nurture| F[Draft email]
-    F --> G[Critic check]
-    G -->|fail, max 2 loops| H1
-    G --> H[Human approval gate]
-    H -->|reject| X
-    H -->|approve / edit| I[Write-back to CRM + audit log]
+    Inbound[Inbound Lead<br/>Web Form / Email / PDF RFP] --> TenantGate{Tenant Auth & Config<br/>TenantManager}
+    TenantGate --> Step1[Step 1: Extract & Document Ingest<br/>Gemini 2.5 Flash + RFP Extraction]
+    Step1 --> Step2[Step 2: 360° Account Dossier & Tech Profiling<br/>Live Crawl + DNS + Script Signatures]
+    Step2 --> Step3[Step 3: Dedupe & Collision Guard<br/>Exact Email + Nickname + Local/Cloud CRM]
+    Step3 --> Step4[Step 4: Score & Battlecard<br/>Fit Matrix + Competitor Displacement]
+    Step4 --> Step5[Step 5: Route<br/>Sales / Nurture / Support / Discard]
+    
+    Step5 -- Discard / Support --> EarlyExit[Early Exit & Telemetry]
+    Step5 -- Sales / Nurture --> Step6[Step 6: Outbound Message Staging<br/>Bounded Generator-Critic Loop]
+    
+    Step6 --> Gate{Step 7: Human Approval Gate<br/>Linear-Style RevOps Dashboard}
+    
+    Gate -- Reject --> AuditReject[Mark Rejected & Audit Log]
+    Gate -- Approve / Edit --> WriteBack[Step 8: Atomic Cloud CRM Write-Back<br/>Salesforce / HubSpot / SQLite]
+    
+    WriteBack --> CRMUpdated[CRM Contact + Deal + Task Created]
 ```
 
-## Design decisions: workflow vs agent
+---
 
-| Step | Type | Why |
+## 4. Pipeline Stages & Architectural Design Decisions
+
+| Stage | Execution Mechanism | Architectural Justification |
 |---|---|---|
-| Extract | LLM call + schema | Fixed task, validate with Pydantic |
-| Dedupe | Rules first, LLM only for ambiguous | Cheap, deterministic, testable |
-| Score | Rules + LLM rationale | Must be explainable |
-| Route | Rules + LLM classifier | Thresholds are predictable |
-| Draft | Generator + critic loop (bounded) | Only step needing real flexibility |
-| Approve | Human gate | Nothing irreversible without a person |
-| Write-back | Plain code | Idempotent, transactional, no LLM |
+| **Tenant Routing** | In-memory lookup / SQLite auth | Sub-millisecond tenant resolution with logical credential isolation. |
+| **Document Ingestion** | Regex & header extraction | Zero-cost parsing for seat count, budget, compliance (SOC 2, FedRAMP, HIPAA), and deadlines. |
+| **Extraction** | LLM schema-constrained call | Pydantic validation handles unstructured edge cases and prompt injection flags. |
+| **Account Dossier** | Concurrent HTTP crawl + DNS profiler | Identifies web stack, DNS MX/SPF email infrastructure, and tech fingerprints (Segment, Datadog). |
+| **Deduplication** | Exact + Normalized SQL & Jaccard index | 100% deterministic duplicate resolution with zero token expenditure and zero false merges. |
+| **Scoring & Battlecard** | Rule-matrix + Competitor intelligence | Transparent 0-100 score + instant displacement playbook (objections, trap questions, 3-touch cadence). |
+| **Routing** | Priority threshold classifier | Predictable tier assignment: Sales Escalation, Nurture, Support, or Discard. |
+| **Outbound Drafting** | Bounded Generator-Critic loop (max 2 iter) | Strict 4-pillar quality checks (relevance, conciseness, call-to-action, grounded claims). |
+| **Human Review** | HITL gate in Linear-style dashboard | Zero unapproved writes. Operations reps inspect dossier, battlecard, and edit draft before commit. |
+| **Atomic Write-Back** | Cloud CRM REST adapters | ACID-compliant rollback semantics with idempotency keys across Salesforce, HubSpot, and SQLite. |
 
-## Safety principles
-1. No CRM write or email without approval.
-2. LLM never gets write credentials; only the write-back module does.
-3. All lead text is untrusted input (prompt injection).
-4. Every run has max steps, max cost, and a trace ID.
+---
 
-## Success metrics
-Extraction >= 90%, dedupe >= 95%, zero unapproved writes, cost/lead < $0.02, every run traceable.
+## 5. Security & Isolation Safeguards
+1. **Zero Unapproved Writes**: Cloud CRM adapters are completely inaccessible to LLM execution contexts; only the post-approval writeback module executes mutations.
+2. **Multi-Tenant Logical Isolation**: Separate API keys, isolated CRM credentials, and distinct routing thresholds per tenant.
+3. **Prompt Injection Defense**: Inbound texts and attached document bodies pass through signature scanners before reaching prompt context.
+4. **Denial-of-Wallet Guards**: Strict upper bounds of 15 pipeline steps and $0.10 total cost per execution trace.
+5. **No AI Tropes in UI**: Restrained Linear/Stripe design standard for high-density enterprise operations.

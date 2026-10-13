@@ -2,40 +2,45 @@
 
 > **Enterprise-grade, resilient AI lead qualification, scoring, and drafting pipeline with human-in-the-loop approval, ACID write-back, and MCP integration.**
 
-[![Tests](https://img.shields.io/badge/tests-129%20passed-success)](tests/)
+[![Tests](https://img.shields.io/badge/tests-172%20passed-success)](tests/)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.14-blue)](pyproject.toml)
 [![Architecture](https://img.shields.io/badge/architecture-hybrid%20deterministic%20%2B%20agentic-indigo)](docs/architecture.md)
-[![Cost](https://img.shields.io/badge/cost-~%240.00020%20%2F%20lead-emerald)](docs/observability_report.md)
-[![Security](https://img.shields.io/badge/security-zero%20unapproved%20writes-red)](docs/security.md)
+[![SaaS](https://img.shields.io/badge/multi--tenant-salesforce%20%7C%20hubspot-emerald)](docs/saas_guide.md)
+[![UI](https://img.shields.io/badge/design-linear%20%2F%20stripe%20aesthetic-black)](src/leadflow/ui/app.py)
 
 ---
 
-## 1. Problem & Architecture
+## 1. Problem & Enterprise Architecture
 
-Inbound sales leads arriving from web forms and cold emails are frequently messy, unstructured, duplicate, or even adversarial (prompt injections). Traditional multi-agent systems often hallucinate CRM records, leak API costs through unbounded loops, or perform unauthorized mutations.
+Inbound sales leads arriving from web forms, cold inquiries, and vendor RFPs are unstructured, messy, duplicate, and competitive. Traditional AI systems often hallucinate CRM records, leak API costs through unbounded loops, lack live company intelligence, or brandish generic AI tropes.
 
-**LeadFlow solves this with a hybrid deterministic / agentic pipeline:**
-- **Zero Unapproved Writes**: Autonomous LLM execution is strictly confined to read-only extraction and bounded email drafting.
-- **Deterministic Deduplication & Scoring**: Local SQL, Jaccard distance, and rule matrices handle deduplication, enrichment, and routing with **0% false merges** and **$0 token cost**.
-- **ACID Write-Back & Rollback**: CRM contacts, deals, and audit logs are committed within a single atomic database transaction guarded by human approval.
-- **Micro-Cost Efficiency**: Average execution cost of **$0.00020 per lead** (>100x cheaper than the $0.02 project ceiling).
+**LeadFlow solves this with an enterprise-grade multi-tenant platform:**
+- **Zero Unapproved Writes**: Autonomous LLM execution is strictly confined to read-only extraction and bounded message drafting.
+- **Multi-Tenant Logical Isolation**: Tenant workspaces with independent API keys, custom ICP scoring rules, and direct cloud CRM adapters (**Salesforce REST** and **HubSpot CRM v3**).
+- **Autonomous Web Intelligence & 360° Account Dossier**: Real-time website crawling and technographic DNS/SPF/script fingerprinting (identifying CRM, analytics, CDPs, and security stacks).
+- **Competitive Displacement Battlecards**: Automated competitor detection (e.g. CrowdStrike, SentinelOne, Salesforce, Apollo) generating tailored objection talk-tracks and 3-touch outbound cadences.
+- **Omnichannel Document / RFP Ingestion**: Native PDF, TXT, and Markdown parsing extracting seat counts, target budgets, compliance mandates (SOC 2, ISO, HIPAA), and deadlines.
+- **Linear/Stripe-Style RevOps Dashboard**: Zero AI badges, sparkles, or purple gradients. Obsidian-zinc palette built for operations professionals.
+- **Micro-Cost Efficiency**: Average execution cost of **$0.00019 per lead** (>100x cheaper than the $0.02 project ceiling).
 
 ```mermaid
 flowchart TD
-    A[Inbound Lead<br/>Email / Web Form] --> B[Step 1: Extract<br/>Gemini 2.5 Flash + Grounding]
-    B --> C[Step 2: Dedupe<br/>Exact Email + Nickname Domain + Collision Guard]
-    C --> D[Step 3: Enrich & Score<br/>Parallel Company/CRM Lookup + 0-100 Score]
-    D --> E[Step 4: Route<br/>Sales / Nurture / Support / Discard]
+    Inbound[Inbound Lead<br/>Web Form / Email / PDF RFP] --> TenantGate{Tenant Auth & Config<br/>TenantManager}
+    TenantGate --> Step1[Step 1: Extract & Document Ingest<br/>Gemini 2.5 Flash + RFP Extraction]
+    Step1 --> Step2[Step 2: 360° Account Dossier & Tech Profiling<br/>Live Crawl + DNS + Script Signatures]
+    Step2 --> Step3[Step 3: Dedupe & Collision Guard<br/>Exact Email + Nickname + Local/Cloud CRM]
+    Step3 --> Step4[Step 4: Score & Battlecard<br/>Fit Matrix + Competitor Displacement]
+    Step4 --> Step5[Step 5: Route<br/>Sales / Nurture / Support / Discard]
     
-    E -- Discard / Support --> X[Early Exit & Telemetry]
-    E -- Sales / Nurture --> F[Step 5: Draft Email<br/>Bounded 2-Iter Generator-Critic Loop]
+    Step5 -- Discard / Support --> EarlyExit[Early Exit & Telemetry]
+    Step5 -- Sales / Nurture --> Step6[Step 6: Outbound Message Staging<br/>Bounded Generator-Critic Loop]
     
-    F --> G{Step 6: Human Gate<br/>Web UI or CLI Gate}
+    Step6 --> Gate{Step 7: Human Approval Gate<br/>Linear-Style RevOps Dashboard}
     
-    G -- Reject --> H[Mark Rejected & Audit Log]
-    G -- Edit / Approve --> I[Step 7: Atomic Write-Back<br/>Contact + Deal + Log + Mock SMTP]
+    Gate -- Reject --> AuditReject[Mark Rejected & Audit Log]
+    Gate -- Approve / Edit --> WriteBack[Step 8: Atomic Cloud CRM Write-Back<br/>Salesforce / HubSpot / SQLite]
     
-    I --> J[CRM Updated & Telemetry Exported]
+    WriteBack --> CRMUpdated[CRM Contact + Deal + Task Created]
 ```
 
 ---
@@ -61,37 +66,37 @@ Detailed evaluation tables and confusion matrices are available in [`docs/result
 
 ---
 
-## 3. Key Components
+## 3. Enterprise Capabilities
 
-### 🖥️ Interactive Web Dashboard (Step 17)
-Run the native zero-dependency web interface for live lead qualification, interactive human review, and CRM inspection:
+### 🏢 Multi-Tenant Workspace & CRM Adapters
+Switch seamlessly between organizations and route updates to enterprise CRMs:
+- **Salesforce Adapter**: Composite REST API v59.0 for Contacts, Opportunities, and Task logs.
+- **HubSpot Adapter**: CRM API v3 with atomic Contact-Deal associations.
+- **Local SQLite**: Zero-latency local caching for self-hosted instances.
+- Complete documentation in [`docs/saas_guide.md`](docs/saas_guide.md).
+
+### 🌐 Autonomous 360° Account Dossier & Technographics
+- Real-time lightweight web crawling with HTML title, heading, and meta-tag parsing.
+- DNS MX and SPF record inspection (Google Workspace, Microsoft 365, Mimecast).
+- Script fingerprinting for Segment, Mixpanel, Datadog, HubSpot, Marketo, and Cloudflare.
+
+### ⚔️ Dynamic Sales Battlecards & Displacement Playbooks
+- Automatic competitor detection across inbound communications and RFP specs.
+- Generates tailored winning pitches, trap discovery questions, objection handling, and 3-touch cadences (Day 0, Day 2, Day 5).
+
+### 🖥️ Linear/Stripe-Style RevOps Dashboard
+- Obsidian-zinc dark mode (`#090a0f`, `#12151e`, `#181d2a`) with zero AI badges or sparkles.
+- Organization switcher, live pipeline stepper, technographic display, battlecard card, and inline outbound message editor.
 ```bash
 python -m leadflow.ui.app --port 8000
 ```
-- **Live Pipeline Stepper**: Visual execution tracking across all 7 stages.
-- **Human Approval Queue**: One-click Approve, Edit & Approve, or Reject with live email preview.
-- **CRM Explorer**: Real-time view of contacts, linked deals, and audit trail.
-- **Telemetry Waterfall**: Live charts of per-step latency, token usage, and costs.
 
-### 🔌 Model Context Protocol (MCP) Server (Step 16)
-Connect LeadFlow to Claude Desktop, Cursor, or Antigravity via standard JSON-RPC 2.0 stdio:
-```bash
-python -m leadflow.mcp.server --db data/crm.db
+### ⚡ SaaS Webhook Ingestion API
+```http
+POST /api/v1/ingest?tenant_key=sk_leadflow_live_123456
+Content-Type: application/json
 ```
-Exposes least-privilege read tools (`search_contact`, `get_contact_details`, `get_crm_stats`, `score_lead_inquiry`). See [`docs/mcp.md`](docs/mcp.md).
-
-### 🛡️ Guardrails & Threat Defense (Step 15)
-- **Prompt Injection Scanner**: Detects and flags adversarial instructions in inbound bodies or signatures.
-- **Least-Privilege Registry**: Analysis phases only have access to read-only tools.
-- **Denial-of-Wallet Guards**: Hard cost ($0.10) and step limits (15 steps) per workflow run.
-- **ACID Rollback**: Automatic transaction rollback if an email dispatch or deal insertion fails. See [`docs/security.md`](docs/security.md).
-
-### 📊 Observability & Cost Accounting (Step 13)
-Integrated SQLite telemetry tracing tracking spans, token usage, and latency:
-```bash
-python -m leadflow.observability.report --export docs/observability_report.md
-```
-See [`docs/observability_report.md`](docs/observability_report.md).
+Automated JSON ingestion with tenant verification, document parsing, and pipeline orchestration.
 
 ---
 
@@ -104,11 +109,11 @@ See [`docs/observability_report.md`](docs/observability_report.md).
 # 2. Seed realistic CRM database (300+ contacts, deals, audit trail)
 python scripts/seed_crm.py
 
-# 3. Run the automated test suite
+# 3. Run the automated test suite (172 unit & integration tests)
 pytest -v
 
-# 4. Run full benchmark evaluation
-python -m evals.run_eval --pipeline leadflow.workflow.pipeline:predict
+# 4. Run the end-to-end Enterprise Pipeline demonstration
+python examples/demo_enterprise_pipeline.py
 
 # 5. Launch the Web Dashboard
 python -m leadflow.ui.app --port 8000
@@ -122,14 +127,15 @@ python -m leadflow.ui.app --port 8000
 leadflow/
 ├── docs/
 │   ├── architecture.md          # End-to-end system architecture & design decisions
-│   ├── tools.md                 # CRM & workflow tool schemas
+│   ├── saas_guide.md            # Enterprise multi-tenancy & CRM integration guide
 │   ├── results.md               # 50-case benchmark evaluation report
 │   ├── security.md              # Threat models & guardrails documentation
 │   ├── mcp.md                   # Model Context Protocol setup guide
 │   └── observability_report.md  # Latency, token, and cost metrics breakdown
 ├── src/leadflow/
-│   ├── crm/                     # SQLite CRM adapter & schema
-│   ├── tools/                   # Least-privilege tool registry
+│   ├── tenancy/                 # Multi-tenant models & TenantManager
+│   ├── crm/                     # Salesforce REST, HubSpot v3 & SQLite adapters
+│   ├── intelligence/            # Web crawler, technographic profiler, battlecards, RFP doc parser
 │   ├── workflow/
 │   │   ├── extract.py           # Grounded structured extraction + injection defense
 │   │   ├── dedupe.py            # Exact & fuzzy deduplication engine
@@ -138,10 +144,12 @@ leadflow/
 │   │   ├── draft.py             # 4-pillar Generator-Critic bounded drafting loop
 │   │   ├── approval.py          # Persistent human approval gate & audit log
 │   │   ├── writeback.py         # Atomic single-transaction CRM write-back
-│   │   └── orchestrator.py      # Checkpointed state machine & step guards
+│   │   └── orchestrator.py      # SaaS & multi-tenant workflow state machine
 │   ├── observability/           # Tracing, span metrics, and CLI reporting
 │   ├── mcp/                     # Model Context Protocol JSON-RPC 2.0 server
-│   └── ui/                      # Zero-dependency interactive web dashboard
+│   └── ui/                      # Linear/Stripe-style interactive RevOps dashboard
+├── examples/
+│   └── demo_enterprise_pipeline.py # Full multi-tenant enterprise demonstration script
 ├── evals/                       # 50-case benchmark dataset & scoring framework
-└── tests/                       # 129 comprehensive unit & integration tests
+└── tests/                       # 172 comprehensive unit & integration tests
 ```
